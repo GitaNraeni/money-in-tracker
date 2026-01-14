@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Income Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#f1f5f9;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --primary:#1e40af;
+  --primary2:#2563eb;
+  --border:#e2e8f0;
+  --danger:#ef4444;
+}
+
+[data-theme="dark"]{
+  --bg:#020617;
+  --card:#0f172a;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --border:#1e293b;
+}
+
+*{box-sizing:border-box;font-family:Inter,system-ui}
+body{margin:0;background:var(--bg);color:var(--text)}
+.container{max-width:1200px;margin:auto;padding:16px}
+
+/* HEADER */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
+}
+.toggle{
+  cursor:pointer;
+  padding:8px 14px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--card);
+}
+
+/* HERO */
+.hero{
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  color:white;
+  padding:28px;
+  border-radius:20px;
+  margin-bottom:20px;
+}
+
+/* CARD */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:16px;
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 14px 35px rgba(0,0,0,.12);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+
+.big{
+  font-size:28px;
+  font-weight:800;
+  color:var(--primary);
+  text-align:center;
+}
+.label{
+  font-size:14px;
+  color:var(--muted);
+  text-align:center;
+}
+
+/* TOTAL */
+.total-card{
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  color:white;
+  text-align:center;
+}
+.total-card .big{color:white;font-size:36px}
+.total-card .label{color:rgba(255,255,255,0.9)}
+
+/* INPUT */
+input{
+  background:var(--card);
+  color:var(--text);
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid var(--border);
+}
+input::placeholder{color:var(--muted)}
+input:focus{
+  outline:none;
+  border-color:var(--primary2);
+  box-shadow:0 0 0 4px rgba(37,99,235,.15);
+}
+
+/* GOAL SECTION */
+.goal-section{
+  text-align:center;
+}
+.goal-section b{
+  display:block;
+  margin-bottom:16px;
+}
+.goal-section input{
+  margin-bottom:16px;
+}
+.progress{
+  height:16px;
+  background:var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  margin:16px 0;
+}
+.progress span{
+  display:block;
+  height:100%;
+  background:linear-gradient(90deg,var(--primary2),#60a5fa);
+  transition:width .4s ease;
+  border-radius:10px;
+}
+.goal-actions{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+  justify-content:center;
+}
+
+/* FORM */
+form{
+  display:grid;
+  grid-template-columns:1fr 1fr auto;
+  gap:12px;
+  margin-bottom:16px;
+}
+button{
+  padding:14px 24px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:var(--primary2);
+  color:white;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+  transition:background .2s ease;
+}
+button:hover{
+  background:var(--primary);
+}
+
+/* LIST */
+.list-box{
+  max-height:340px;
+  overflow-y:auto;
+  margin-top:12px;
+}
+.item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 0;
+  border-bottom:1px dashed var(--border);
+}
+.item > div:first-child{
+  flex:1;
+}
+.del{
+  font-size:18px;
+  background:none;
+  border:none;
+  cursor:pointer;
+  transition:.2s;
+  color:var(--muted);
+  padding:4px 8px;
+}
+.del:hover{
+  transform:scale(1.2);
+  color:var(--danger);
+}
+
+/* CHART */
+.chart-box{
+  height:280px;
+  margin-top:16px;
+}
+
+/* ACTION */
+.actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.actions button{
+  flex:1;
+  min-width:120px;
+  max-width:200px;
+}
+
+@media(max-width:768px){
+  form{grid-template-columns:1fr}
+  .actions button{
+    min-width:calc(50% - 5px);
+  }
+  .goal-actions{
+    flex-direction:column;
+  }
+  .goal-actions button{
+    width:100%;
+  }
+}
+
+@media(max-width:480px){
+  .grid{
+    grid-template-columns:1fr;
+  }
+  .actions button{
+    min-width:100%;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="header">
+  <h2>💸 Income Tracker</h2>
+  <div class="toggle" id="themeToggle">🌙</div>
+</div>
+
+<div class="hero">
+  <h1>Income Tracker</h1>
+  <p>Kelola dan pantau pemasukan Anda dengan mudah dan real-time</p>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="big" id="totalTransactions">0</div>
+    <div class="label">Total Transaksi</div>
+  </div>
+  <div class="card">
+    <div class="big" id="averageIncome">Rp 0</div>
+    <div class="label">Rata-rata Pemasukan</div>
+  </div>
+  <div class="card">
+    <div class="big" id="thisMonthIncome">Rp 0</div>
+    <div class="label">Pemasukan Bulan Ini</div>
+  </div>
+  <div class="card">
+    <div class="big" id="highestIncome">Rp 0</div>
+    <div class="label">Pemasukan Tertinggi</div>
+  </div>
+</div>
+
+<div class="card total-card">
+  <div class="label">💰 Total Pemasukan</div>
+  <div class="big" id="totalIncome">Rp 0</div>
+</div>
+
+<div class="card goal-section">
+  <b>🎯 Target Profit Bulanan</b>
+  <input id="goalInput" type="number" placeholder="Contoh: 5000000">
+  <div class="progress">
+    <span id="goalBar"></span>
+  </div>
+  <small id="goalText" class="label"></small>
+  <div class="goal-actions">
+    <button onclick="saveGoal()">Simpan Target</button>
+    <button onclick="resetGoal()">Reset Target</button>
+  </div>
+</div>
+
+<form id="form">
+  <input id="amount" type="number" placeholder="Nominal pemasukan" required>
+  <input id="desc" placeholder="Keterangan pemasukan" required>
+  <button type="submit">Tambah Pemasukan</button>
+</form>
+
+<div class="card">
+  <b>📋 Daftar Pemasukan</b>
+  <div class="list-box" id="list"></div>
+</div>
+
+<div class="card">
+  <b>📊 Grafik Pemasukan</b>
+  <div class="chart-box">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<div class="actions">
+  <button onclick="downloadCSV()">📥 Download CSV</button>
+  <button onclick="exportJSON()">📤 Export JSON</button>
+  <button onclick="importJSON()">📂 Import JSON</button>
+  <button onclick="resetData()">🗑️ Reset Data</button>
+</div>
+
+</div>
+
+<script>
+let incomes = JSON.parse(localStorage.getItem("incomes") || "[]");
+let goal = Number(localStorage.getItem("goal") || 0);
+let theme = localStorage.getItem("theme") || "light";
+document.documentElement.dataset.theme = theme;
+
+// Update tema
+themeToggle.onclick = () => {
+  theme = theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem("theme", theme);
+  themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+  drawChart();
+};
+
+// Atur ikon tema awal
+themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+
+// Normalisasi data income
+incomes = incomes.map(i => ({
+  id: i.id || Date.now(),
+  amount: Number(i.amount) || 0,
+  desc: i.desc || i.description || "-",
+  date: i.date || new Date().toISOString().split("T")[0]
+}));
+
+// Format Rupiah
+function rupiah(n) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0
+  }).format(n || 0);
+}
+
+// Handle form submit
+form.onsubmit = e => {
+  e.preventDefault();
+  if (!amount.value || !desc.value) {
+    alert("Harap isi nominal dan keterangan pemasukan!");
+    return;
+  }
+  
+  incomes.push({
+    id: Date.now(),
+    amount: +amount.value,
+    desc: desc.value,
+    date: new Date().toISOString().split("T")[0]
+  });
+  
+  save();
+  form.reset();
+  amount.focus();
+};
+
+// Simpan ke localStorage
+function save() {
+  localStorage.setItem("incomes", JSON.stringify(incomes));
+  render();
+}
+
+// Render semua data
+function render() {
+  const total = incomes.reduce((a, b) => a + b.amount, 0);
+  const totalCount = incomes.length;
+  const average = totalCount > 0 ? total / totalCount : 0;
+  const highest = Math.max(0, ...incomes.map(i => i.amount));
+  
+  // Update statistik
+  totalIncome.textContent = rupiah(total);
+  totalTransactions.textContent = totalCount.toLocaleString();
+  averageIncome.textContent = rupiah(average);
+  highestIncome.textContent = rupiah(highest);
+  
+  // Hitung pemasukan bulan ini
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyIncome = incomes
+    .filter(i => {
+      const date = new Date(i.date);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    })
+    .reduce((a, b) => a + b.amount, 0);
+  
+  thisMonthIncome.textContent = rupiah(monthlyIncome);
+  
+  // Render list
+  list.innerHTML = incomes
+    .slice()
+    .reverse()
+    .map((i, idx) => `
+      <div class="item">
+        <div>
+          <b>${rupiah(i.amount)}</b><br>
+          <small>${i.desc}</small><br>
+          <small style="color: var(--muted);">${formatDate(i.date)}</small>
+        </div>
+        <button class="del" onclick="del(${incomes.length - 1 - idx})" title="Hapus">
+          🗑️
+        </button>
+      </div>
+    `)
+    .join("");
+  
+  // Update progress goal
+  updateGoal(monthlyIncome);
+  
+  // Update chart
+  drawChart();
+}
+
+// Format tanggal
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+// Hapus income
+function del(index) {
+  if (confirm("Apakah Anda yakin ingin menghapus pemasukan ini?")) {
+    incomes.splice(index, 1);
+    save();
+  }
+}
+
+// Goal management
+goalInput.value = goal || "";
+function saveGoal() {
+  const value = Number(goalInput.value);
+  if (value <= 0) {
+    alert("Masukkan target yang valid (lebih dari 0)");
+    return;
+  }
+  goal = value;
+  localStorage.setItem("goal", goal);
+  updateGoal();
+  alert("Target berhasil disimpan!");
+}
+function resetGoal() {
+  if (confirm("Apakah Anda yakin ingin mereset target?")) {
+    goal = 0;
+    goalInput.value = "";
+    localStorage.removeItem("goal");
+    updateGoal();
+  }
+}
+function updateGoal(currentMonthly = null) {
+  if (!goal) {
+    goalBar.style.width = "0%";
+    goalText.textContent = "Belum ada target yang ditetapkan";
+    return;
+  }
+  
+  if (currentMonthly === null) {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    currentMonthly = incomes
+      .filter(i => {
+        const date = new Date(i.date);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      })
+      .reduce((a, b) => a + b.amount, 0);
+  }
+  
+  const percentage = Math.min(100, (currentMonthly / goal) * 100);
+  goalBar.style.width = `${percentage}%`;
+  goalText.textContent = `${rupiah(currentMonthly)} / ${rupiah(goal)} (${percentage.toFixed(1)}%)`;
+}
+
+// Chart
+let chart = null;
+function drawChart() {
+  const ctx = document.getElementById("chart").getContext("2d");
+  
+  if (chart) {
+    chart.destroy();
+  }
+  
+  // Group by date
+  const dataMap = {};
+  incomes.forEach(i => {
+    dataMap[i.date] = (dataMap[i.date] || 0) + i.amount;
+  });
+  
+  // Sort dates
+  const sortedDates = Object.keys(dataMap).sort();
+  const amounts = sortedDates.map(date => dataMap[date]);
+  
+  chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: sortedDates.map(date => formatDate(date)),
+      datasets: [{
+        label: "Pemasukan",
+        data: amounts,
+        backgroundColor: theme === "dark" ? "#60a5fa" : "#2563eb",
+        borderColor: theme === "dark" ? "#93c5fd" : "#3b82f6",
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return rupiah(context.raw);
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              if (value >= 1000000) {
+                return "Rp" + (value / 1000000).toFixed(1) + "Jt";
+              }
+              if (value >= 1000) {
+                return "Rp" + (value / 1000).toFixed(0) + "K";
+              }
+              return "Rp" + value;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Export/Import functions
+function downloadCSV() {
+  if (incomes.length === 0) {
+    alert("Tidak ada data untuk diexport!");
+    return;
+  }
+  
+  let csv = "Tanggal,Keterangan,Nominal\n";
+  incomes.forEach(i => {
+    csv += `${i.date},"${i.desc}",${i.amount}\n`;
+  });
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pemasukan_${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportJSON() {
+  if (incomes.length === 0) {
+    alert("Tidak ada data untuk diexport!");
+    return;
+  }
+  
+  const dataStr = JSON.stringify(incomes, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pemasukan_${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function importJSON() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const importedData = JSON.parse(event.target.result);
+        if (!Array.isArray(importedData)) {
+          throw new Error("Format file tidak valid");
+        }
+        
+        if (confirm(`Akan mengimport ${importedData.length} data pemasukan. Lanjutkan?`)) {
+          incomes = importedData.map(item => ({
+            id: item.id || Date.now(),
+            amount: Number(item.amount) || 0,
+            desc: item.desc || item.description || "-",
+            date: item.date || new Date().toISOString().split("T")[0]
+          }));
+          save();
+          alert("Data berhasil diimport!");
+        }
+      } catch (error) {
+        alert("Error: File JSON tidak valid!");
+        console.error(error);
+      }
+    };
+    reader.readAsText(file);
+  };
+  
+  input.click();
+}
+
+function resetData() {
+  if (incomes.length === 0) {
+    alert("Tidak ada data untuk direset!");
+    return;
+  }
+  
+  if (confirm("Apakah Anda yakin ingin menghapus SEMUA data pemasukan? Tindakan ini tidak dapat dibatalkan.")) {
+    incomes = [];
+    localStorage.removeItem("incomes");
+    render();
+    alert("Semua data telah direset!");
+  }
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
